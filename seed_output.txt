@@ -1,0 +1,28 @@
+
+  Dropping all tables ... 9.55ms DONE
+
+   INFO  Preparing database.  
+
+  Creating migration table  15.09ms DONE
+
+   INFO  Running migrations.  
+
+  0001_01_01_000000_create_users_table  47.79ms DONE
+  0001_01_01_000001_create_cache_table  28.44ms DONE
+  0001_01_01_000002_create_jobs_table  38.58ms DONE
+  2026_03_30_015645_create_staff_table  7.01ms DONE
+  2026_03_30_015646_create_employees_table  7.31ms DONE
+  2026_03_30_015648_create_visitors_table  6.80ms DONE
+  2026_03_30_015649_create_visits_table  15.99ms DONE
+  2026_03_30_015651_create_visit_visitor_table  7.52ms DONE
+  2026_03_30_015653_create_attendances_table  8.92ms DONE
+  2026_03_30_015654_create_vehicles_table  10.61ms DONE
+  2026_03_30_015656_create_items_table  9.36ms DONE
+  2026_03_30_015658_create_notifications_table  9.76ms DONE
+
+
+   INFO  Seeding database.  
+
+  Database\Seeders\DummyDataSeeder  RUNNING  
+  Database\Seeders\DummyDataSeeder  5,168 ms DONE  
+
