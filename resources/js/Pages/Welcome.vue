@@ -29,13 +29,9 @@ defineProps({
                 <div class="text-2xl font-headline font-bold tracking-tighter text-[#3e0007] dark:text-[#f6f3f2]">
                     LEMBAH SARI
                 </div>
-                <div class="hidden md:flex space-x-8 items-center">
-                    
+                <div class="hidden md:flex space-x-8 items-center">                    
                     <Link v-if="$page.props.auth.user" :href="route('dashboard')" class="editorial-gradient text-white px-6 py-2.5 rounded-md font-headline font-semibold scale-95 active:scale-90 transition-transform shadow-lg shadow-primary/10">
                         Dashboard
-                    </Link>
-                    <Link v-else :href="route('login')" class="editorial-gradient text-white px-6 py-2.5 rounded-md font-headline font-semibold scale-95 active:scale-90 transition-transform shadow-lg shadow-primary/10">
-                        Access Portal
                     </Link>
                 </div>
                 <button class="md:hidden text-primary">
@@ -52,9 +48,7 @@ defineProps({
                 <!-- Brand Identity Cluster -->
                 <div class="space-y-4">
                     <div class="flex justify-center mb-6">
-                        <div class="w-16 h-16 rounded-full bg-primary-container flex items-center justify-center text-white shadow-xl">
-                            <span class="material-symbols-outlined text-4xl" data-weight="fill" style="font-variation-settings: 'FILL' 1;">account_balance</span>
-                        </div>
+                        <img src="/images/lembah entry logo.png" alt="Lembah Entry Logo" class="h-32 w-auto object-contain" />
                     </div>
                     <h1 class="font-headline text-5xl md:text-7xl font-extrabold tracking-tighter text-primary">
                         Lembah Entry
@@ -81,7 +75,7 @@ defineProps({
                         Register
                         <span class="material-symbols-outlined group-hover:translate-x-1 transition-transform">person_add</span>
                     </Link>
-                    <p class="text-xs uppercase tracking-[0.2em] text-outline font-semibold w-full md:basis-full text-stone-500 mt-4">
+                    <p class="text-xs uppercase tracking-[0.2em] text-outline font-semibold w-full md:basis-full mt-4">
                         Authorized Personnel Only
                     </p>
                 </div>
@@ -141,8 +135,11 @@ defineProps({
         <!-- Footer -->
         <footer class="w-full border-t border-[#3e0007]/5 bg-[#f6f3f2] dark:bg-stone-950 relative z-10 mt-auto">
             <div class="flex flex-col md:flex-row justify-between items-center px-12 py-16 w-full mx-auto max-w-screen-2xl">
-                <div class="text-lg font-bold text-[#3e0007] dark:text-[#f6f3f2] font-headline mb-8 md:mb-0">
-                    HERITAGE
+                <div class="flex items-center gap-4 mb-8 md:mb-0">
+                    <img src="/images/LSSB logo.jpg" alt="LSSB Logo" class="h-10 w-auto object-contain" />
+                    <div class="text-lg font-bold text-[#3e0007] dark:text-[#f6f3f2] font-headline">
+                        LEMBAH SARI SDN BHD
+                    </div>
                 </div>
                 <div class="flex flex-col md:flex-row items-center gap-8">
                     <div class="flex gap-8">
@@ -151,7 +148,7 @@ defineProps({
                         <a class="font-['Manrope'] text-sm uppercase tracking-widest text-[#3e0007]/50 dark:text-[#f6f3f2]/50 hover:text-[#0061a2] transition-colors" href="#">Institutional Access</a>
                     </div>
                     <p class="font-['Manrope'] text-sm uppercase tracking-widest text-[#3e0007]/50 dark:text-[#f6f3f2]/50 mt-8 md:mt-0 text-center">
-                        © 2024 Heritage Curator Systems. All rights preserved.
+                        © 2026 Lembah Entry VMS. All rights preserved.
                     </p>
                 </div>
             </div>

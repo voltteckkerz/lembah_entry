@@ -22,15 +22,17 @@ class VisitController extends Controller
     public function create()
     {
         $employees = Employee::all();
-        
-        $todayVisits = Visit::with(['visitors', 'employee', 'vehicles'])
+        $visitors = Visitor::all();
+
+        $todayVisits = Visit::with(['visitors', 'employee', 'vehicles', 'items'])
             ->whereDate('visit_date', now()->toDateString())
             ->orderBy('created_at', 'desc')
             ->get();
 
         return Inertia::render('Visit/Create', [
             'employees' => $employees,
-            'todayVisits' => $todayVisits
+            'todayVisits' => $todayVisits,
+            'allVisitors' => $visitors
         ]);
     }
 
@@ -42,79 +44,60 @@ class VisitController extends Controller
         ]);
     }
 
-    public function sign(Request $request, Visit $visit)
-    {
-        $validated = $request->validate([
-            'role' => 'required|in:guard,visitor,host,supervisor',
-            'signature' => 'required|string', // base64 string
-        ]);
-
-        $column = $validated['role'] . '_signature';
-        $visit->update([$column => $validated['signature']]);
-
-        // Sequential Workflow Logic
-        if ($validated['role'] === 'host') {
-            // Ping Supervisor
-            \App\Models\Notification::create([
-                'user_id' => 1, // Assuming Supervisor is Admin (user_id 1)
-                'visit_id' => $visit->visit_id,
-                'message' => 'Pass ' . $visit->pass_number . ' verified by Host. Awaiting Duty Supervisor clearance.',
-                'status' => 'unread'
-            ]);
-        } elseif ($validated['role'] === 'supervisor') {
-            // Final Approval achieved
-            $visit->update(['status' => 'Approved']);
-        }
-
-        // Final Redirect
-        if (in_array($validated['role'], ['host', 'supervisor'])) {
-            return redirect()->route('approvals.index')->with('success', 'Signature secured. Pass routed to next stage.');
-        }
-
-        return redirect()->back()->with('success', 'Signature saved successfully.');
-    }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
+            'pass_number' => 'required|string|max:50',
             'purpose' => 'required|string|max:255',
             'employee_id' => 'required|exists:employees,employee_id',
             'visitors' => 'required|array|min:1|max:5',
             'visitors.*.name' => 'required|string|max:100',
             'visitors.*.ic_number' => 'required|string|max:20',
+            'visitors.*.company' => 'nullable|string|max:100',
             'vehicle_plate' => 'nullable|string|max:20',
             'vehicle_type' => 'nullable|string|max:50',
             'items' => 'nullable|array',
-            'guard_signature' => 'required|string',
-            'visitor_signature' => 'required|string',
+            'items.*.item_name' => 'nullable|string|max:100',
+            'items.*.quantity' => 'nullable|integer',
+            'items.*.remarks' => 'nullable|string|max:255',
+            'check_in_time' => 'nullable|string|max:10',
         ]);
 
-        // Generate a pass number
-        $passNumber = 'VP-' . strtoupper(Str::random(6));
+        $checkInTime = now();
+        if (! empty($validated['check_in_time'])) {
+            try {
+                $manualTime = \Carbon\Carbon::parse($validated['check_in_time']);
+                $checkInTime = now()->setTime($manualTime->hour, $manualTime->minute, 0);
+            } catch (\Exception $e) {}
+        }
 
         $visit = Visit::create([
             'employee_id' => $validated['employee_id'],
             'user_id' => auth()->id(),
-            'pass_number' => $passNumber,
+            'pass_number' => $validated['pass_number'],
             'visit_date' => now()->toDateString(),
+            'check_in_time' => $checkInTime,
             'purpose' => $validated['purpose'],
-            'status' => 'Pending',
-            'guard_signature' => $validated['guard_signature'],
-            'visitor_signature' => $validated['visitor_signature'],
+            'status' => 'Active',
         ]);
 
         foreach ($validated['visitors'] as $visitorData) {
-            $visitor = Visitor::create([
-                'name' => $visitorData['name'],
-                'ic_number' => $visitorData['ic_number'],
-            ]);
+            // Find or update visitor by IC number
+            $visitor = Visitor::updateOrCreate(
+                ['ic_number' => $visitorData['ic_number']],
+                [
+                    'name' => $visitorData['name'],
+                    'company' => $visitorData['company'] ?? '',
+                ]
+            );
             $visit->visitors()->attach($visitor->visitor_id);
         }
 
         if (!empty($validated['vehicle_plate'])) {
             Vehicle::create([
                 'plate_number' => $validated['vehicle_plate'],
-                'vehicle_type' => $validated['vehicle_type'],
+                'vehicle_type' => $validated['vehicle_type'] ?? 'Visitor',
                 'owner_type' => 'visitor',
                 'visit_id' => $visit->visit_id,
             ]);
@@ -132,15 +115,7 @@ class VisitController extends Controller
                 }
             }
         }
-        
-        // Notify Host (Systematically sending to User 1 for demo bounds, or dynamic if Users map to Employees)
-        \App\Models\Notification::create([
-            'user_id' => 1,
-            'visit_id' => $visit->visit_id,
-            'message' => 'New visitor registration requires Host verification signature.',
-            'status' => 'unread'
-        ]);
 
-        return redirect()->route('visits.create')->with('success', 'Visit registered and signatures captured.');
+        return redirect()->route('visits.create')->with('success', 'Visit registered and ready for check-in.');
     }
 }

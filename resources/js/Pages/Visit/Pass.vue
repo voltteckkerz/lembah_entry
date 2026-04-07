@@ -1,7 +1,6 @@
 <script setup>
 import { Head, usePage, Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
-import SignaturePad from '@/Components/SignaturePad.vue';
 
 const props = defineProps({
     visit: Object,
@@ -31,7 +30,7 @@ const printPass = () => {
         
         <!-- On-screen Print Controls (Hidden when printing) -->
         <div class="fixed top-6 right-6 flex gap-4 print:hidden z-50">
-            <Link :href="userRole === 'guard' ? route('visits.create') : route('approvals.index')" class="px-6 py-2 bg-white text-stone-600 font-bold rounded-lg shadow-sm hover:bg-stone-50 border border-stone-200 transition-colors">
+            <Link :href="route('visits.create')" class="px-6 py-2 bg-white text-stone-600 font-bold rounded-lg shadow-sm hover:bg-stone-50 border border-stone-200 transition-colors">
                 Go Back
             </Link>
             <button v-if="userRole === 'guard'" @click="printPass" class="px-6 py-2 bg-[#3e0007] text-white font-bold rounded-lg shadow-lg hover:opacity-90 transition-all flex items-center gap-2">
@@ -85,7 +84,9 @@ const printPass = () => {
                     <div class="space-y-6">
                         <div>
                             <p class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1 border-b border-stone-200 pb-1">Sponsoring Host / Department</p>
-                            <p class="text-xl font-bold text-[#3e0007]">{{ visit.employee?.name || 'Unknown' }}</p>
+                            <div class="flex items-center gap-2">
+                                <p class="text-xl font-bold text-[#3e0007]">{{ visit.employee?.name || 'Unknown' }}</p>
+                            </div>
                             <p class="text-sm text-stone-500 mt-0.5">{{ visit.employee?.department || 'Operations' }} Department</p>
                         </div>
                         <div>
@@ -131,55 +132,9 @@ const printPass = () => {
 
             </div>
 
-            <!-- Bottom Signatures Block: 4 Interactive Digital Signature Pads -->
+            <!-- Pass verification Footer -->
             <div class="border-t-2 border-stone-200 pt-8 mt-auto">
-                <p class="text-xs text-[#3e0007] font-bold uppercase tracking-widest text-center mb-8 border border-[#3e0007]/20 bg-[#3e0007]/5 py-2">E-Signature Access Verification</p>
-                <div class="grid grid-cols-4 gap-6">
-                    
-                    <SignaturePad 
-                        title="1. Post Guard" 
-                        role="guard" 
-                        :visitId="visit.visit_id" 
-                        :existingSignature="visit.guard_signature" 
-                        footerText="Date & Timestamp" 
-                        headerClass="bg-stone-100 text-stone-500" 
-                        :isDisabled="true" 
-                    />
-
-                    <SignaturePad 
-                        title="2. Primary Visitor" 
-                        role="visitor" 
-                        :visitId="visit.visit_id" 
-                        :existingSignature="visit.visitor_signature" 
-                        footerText="I agree to site safety protocols" 
-                        headerClass="bg-stone-100 text-[#3e0007]" 
-                        :isDisabled="true" 
-                    />
-
-                    <SignaturePad 
-                        title="3. Verified By (Host)" 
-                        role="host" 
-                        :visitId="visit.visit_id" 
-                        :existingSignature="visit.host_signature" 
-                        footerText="Sponsoring Employee Signature" 
-                        headerClass="bg-stone-100 text-[#3e0007]" 
-                        :isDisabled="userRole !== 'host'"
-                    />
-
-                    <SignaturePad 
-                        title="4. Duty Supervisor" 
-                        role="supervisor" 
-                        :visitId="visit.visit_id" 
-                        :existingSignature="visit.supervisor_signature" 
-                        footerText="Clearance Appv." 
-                        headerClass="bg-amber-100 text-amber-800" 
-                        containerClass="bg-[#fbf9f8]" 
-                        :isDisabled="userRole !== 'supervisor'"
-                    />
-
-                </div>
-                
-                <p class="text-[9px] text-stone-400 text-center mt-6 uppercase tracking-wider">This e-pass remains the property of Sari Heritage Center. Unauthorized reproduction is strictly prohibited.</p>
+                <p class="text-[9px] text-stone-400 text-center uppercase tracking-wider">This e-pass remains the property of Sari Heritage Center. Unauthorized reproduction is strictly prohibited.</p>
             </div>
 
         </div>

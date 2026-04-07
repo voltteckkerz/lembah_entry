@@ -1,101 +1,72 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, useForm, Link } from '@inertiajs/vue3';
+import { Head, useForm, Link, router } from '@inertiajs/vue3';
+import { Menu, MenuButton, MenuItem, MenuItems, Listbox, ListboxButton, ListboxOptions, ListboxOption } from '@headlessui/vue';
 
 const props = defineProps({
     employees: Array,
-    todayVisits: Array, // Array of today's visits from the Controller
+    allVisitors: Array, // Pre-fetched visitors for lookup
+    todayVisits: Array,
 });
 
 const form = useForm({
+    pass_number: '',
     purpose: '',
     employee_id: '',
     vehicle_plate: '',
-    vehicle_type: 'Car',
     visitors: [
-        { name: '', ic_number: '' }
+        { name: '', ic_number: '', company: '' }
     ],
     items: [],
-    guard_signature: '',
-    visitor_signature: ''
+    check_in_time: '',
+    check_out_time: '',
+});
+
+const showManualTime = ref(false);
+const selectedVisitForCheckout = ref(null);
+
+const visitorSearchQuery = ref('');
+
+const filteredLookupVisitors = computed(() => {
+    if (!visitorSearchQuery.value) return props.allVisitors.slice(0, 10); // Limit initial view
+    const q = visitorSearchQuery.value.toLowerCase();
+    return props.allVisitors.filter(v =>
+        v.name.toLowerCase().includes(q) ||
+        v.ic_number.toLowerCase().includes(q)
+    ).slice(0, 10);
 });
 
 const actionForm = useForm({});
 
-// Canvas Refs for Inline Form Signing
-const guardCanvasRef = ref(null);
-const visitorCanvasRef = ref(null);
-const padState = ref({
-    guard: { isDrawing: false, hasDrawn: false, ctx: null },
-    visitor: { isDrawing: false, hasDrawn: false, ctx: null }
+const selectedEmployee = computed(() => {
+    return props.employees.find(emp => emp.employee_id === form.employee_id) || null;
 });
 
-onMounted(() => {
-    initCanvases();
-});
-
-const initCanvases = () => {
-    [ { ref: guardCanvasRef, key: 'guard' }, { ref: visitorCanvasRef, key: 'visitor' } ].forEach(pad => {
-        if (!pad.ref.value) return;
-        const canvas = pad.ref.value;
-        canvas.width = canvas.offsetWidth;
-        canvas.height = canvas.offsetHeight;
-        const ctx = canvas.getContext('2d');
-        ctx.lineWidth = 2;
-        ctx.lineCap = 'round';
-        ctx.strokeStyle = '#000000';
-        padState.value[pad.key].ctx = ctx;
-    });
-};
-
-const getCoords = (e, canvas) => {
-    const rect = canvas.getBoundingClientRect();
-    if (e.touches && e.touches.length > 0) {
-        return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
-    }
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
-};
-
-const startDraw = (e, key) => {
-    e.preventDefault();
-    padState.value[key].isDrawing = true;
-    padState.value[key].hasDrawn = true;
-    const { x, y } = getCoords(e, (key === 'guard' ? guardCanvasRef : visitorCanvasRef).value);
-    padState.value[key].ctx.beginPath();
-    padState.value[key].ctx.moveTo(x, y);
-};
-
-const draw = (e, key) => {
-    e.preventDefault();
-    if (!padState.value[key].isDrawing) return;
-    const { x, y } = getCoords(e, (key === 'guard' ? guardCanvasRef : visitorCanvasRef).value);
-    padState.value[key].ctx.lineTo(x, y);
-    padState.value[key].ctx.stroke();
-};
-
-const stopDraw = (key) => {
-    if (padState.value[key].isDrawing) {
-        padState.value[key].ctx.closePath();
-        padState.value[key].isDrawing = false;
-    }
-};
-
-const clearDraw = (key) => {
-    const canvas = (key === 'guard' ? guardCanvasRef : visitorCanvasRef).value;
-    padState.value[key].ctx.clearRect(0, 0, canvas.width, canvas.height);
-    padState.value[key].hasDrawn = false;
-};
 
 const addVisitor = () => {
     if (form.visitors.length < 5) {
-        form.visitors.push({ name: '', ic_number: '' });
+        form.visitors.push({ name: '', ic_number: '', company: '' });
     }
+};
+
+const selectReturningVisitor = (index, visitor) => {
+    form.visitors[index].name = visitor.name;
+    form.visitors[index].ic_number = visitor.ic_number;
+    form.visitors[index].company = visitor.company || '';
 };
 
 const removeVisitor = (index) => {
     if (form.visitors.length > 1) {
         form.visitors.splice(index, 1);
+    }
+};
+
+const deleteVisitor = (visitorId) => {
+    if (confirm('Are you sure you want to permanently delete this visitor profile?')) {
+        router.delete(route('visitors.destroy', { visitor: visitorId }), {
+            preserveScroll: true
+        });
     }
 };
 
@@ -108,264 +79,390 @@ const removeItem = (index) => {
 };
 
 const submit = () => {
-    // Capture base64 from canvases
-    if (padState.value.guard.hasDrawn) form.guard_signature = guardCanvasRef.value.toDataURL('image/png');
-    if (padState.value.visitor.hasDrawn) form.visitor_signature = visitorCanvasRef.value.toDataURL('image/png');
+    if (selectedVisitForCheckout.value) {
+        if (!showManualTime.value) form.check_out_time = '';
+        
+        let data = {};
+        if (form.check_out_time) data.check_out_time = form.check_out_time;
 
-    form.post(route('visits.store'), {
-        onSuccess: () => {
-            clearDraw('guard');
-            clearDraw('visitor');
-            form.reset();
-        }
-    });
+        actionForm.patch(route('visits.checkout', selectedVisitForCheckout.value.visit_id), {
+            data: data,
+            onSuccess: () => {
+                form.reset();
+                selectedVisitForCheckout.value = null;
+                showManualTime.value = false;
+            }
+        });
+    } else {
+        if (!showManualTime.value) form.check_in_time = '';
+        form.post(route('visits.store'), {
+            onSuccess: () => {
+                form.reset();
+                showManualTime.value = false;
+            }
+        });
+    }
 };
 
-const checkInVisitor = (visit) => {
-    actionForm.patch(route('visits.checkin', visit.visit_id));
+const handleLiveFeedClick = (visit) => {
+    if (visit.status !== 'Active') return;
+    
+    if (selectedVisitForCheckout.value && selectedVisitForCheckout.value.visit_id === visit.visit_id) {
+        selectedVisitForCheckout.value = null;
+        form.reset();
+        showManualTime.value = false;
+        return;
+    }
+    
+    selectedVisitForCheckout.value = visit;
+    showManualTime.value = false;
+    
+    form.pass_number = visit.pass_number || '';
+    form.purpose = visit.purpose || '';
+    form.employee_id = visit.employee_id;
+    form.vehicle_plate = visit.vehicles?.[0]?.plate_number || '';
+    
+    if (visit.visitors && visit.visitors.length > 0) {
+        form.visitors = visit.visitors.map(v => ({ name: v.name, ic_number: v.ic_number, company: v.company }));
+    }
 };
 
-const checkOutVisitor = (visit) => {
-    actionForm.patch(route('visits.checkout', visit.visit_id));
+const clearSelection = () => {
+    if (selectedVisitForCheckout.value) {
+        selectedVisitForCheckout.value = null;
+        form.reset();
+        showManualTime.value = false;
+    }
 };
+
 
 const formatTime = (timeString) => {
     if (!timeString) return '-';
-    // Laravel returns "YYYY-MM-DD HH:MM:SS" or ISO. Normalize to ISO cross-browser.
     const normalized = timeString.replace(' ', 'T');
     const date = new Date(normalized);
     if (isNaN(date.getTime())) return '-';
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
-
-const calculateDuration = (checkInTime) => {
-    if (!checkInTime) return '-';
-    const start = new Date(checkInTime.replace(' ', 'T'));
-    const now = new Date();
-    let diffMs = now - start;
-    if (diffMs < 0) diffMs = 0;
-    const diffHrs = Math.floor(diffMs / 3600000);
-    const diffMins = Math.floor((diffMs % 3600000) / 60000);
-    return `${diffHrs}h ${diffMins}m`;
-};
 </script>
 
 <template>
-    <Head title="Register Visit - VMS Portal" />
+    <Head title="Register Visit - Lembah Entry" />
     <AuthenticatedLayout>
-        <div class="p-8 space-y-8 max-w-[1400px] mx-auto w-full font-body">
-            <!-- Header Section -->
-            <section class="flex flex-col md:flex-row justify-between items-end gap-6 mb-4">
-                <div class="space-y-2">
-                    <h2 class="text-4xl font-headline font-extrabold tracking-tight text-primary">Visitor Management Center</h2>
-                    <p class="text-secondary font-medium">Pre-register visitors and manage the live security flow natively.</p>
-                </div>
-                <!-- Dynamic Quick Stats (Calculated on the fly) -->
-                <div class="flex items-center gap-3 bg-surface-container-low p-2 rounded-xl">
-                    <div class="px-4 py-2 bg-surface-container-lowest rounded-lg shadow-sm text-center">
-                        <p class="text-[10px] uppercase tracking-wider text-outline font-bold">Today's Visits</p>
-                        <p class="text-2xl font-headline font-extrabold text-primary">{{ todayVisits.length }}</p>
-                    </div>
-                </div>
-            </section>
+        <div class="px-6 py-8 bg-[#f8f6f5] min-h-screen" @click="clearSelection">
+            <div class="max-w-[1440px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 h-full items-start">
 
-            <!-- Main Asymmetric Split Layout -->
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                
-                <!-- LEFT COLUMN: Registration Form -->
-                <div class="lg:col-span-5 space-y-6">
-                    <form @submit.prevent="submit" class="bg-surface-container-low rounded-xl p-6 md:p-8 space-y-8 shadow-sm transition-all border border-transparent">
-                        <div class="flex items-center gap-3 mb-2 border-b border-outline-variant/20 pb-4">
-                            <span class="material-symbols-outlined text-primary" data-icon="how_to_reg">how_to_reg</span>
-                            <h3 class="font-headline font-bold text-lg text-on-surface">New Registration</h3>
-                        </div>
+                <div class="lg:col-span-7 space-y-8">
+                    <header class="mb-8">
+                        <h2 class="text-3xl font-headline font-extrabold text-primary tracking-tight">Register Visit</h2>
+                        <p class="text-stone-500 mt-1">Initiate a new curated entry for the Heritage Portal.</p>
+                    </header>
 
-                        <!-- Single Block 1: Visit & Host -->
-                        <div class="space-y-4">
-                            <div>
-                                <label class="text-xs font-bold uppercase tracking-widest text-outline ml-1">Purpose / Need</label>
-                                <input v-model="form.purpose" required class="w-full bg-surface-container-lowest border-outline-variant/20 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all outline-none mt-2" placeholder="e.g. Server Maintenance" type="text" />
-                            </div>
-                            <div>
-                                <label class="text-xs font-bold uppercase tracking-widest text-outline ml-1">Sponsoring Host</label>
-                                <div class="relative mt-2">
-                                    <select v-model="form.employee_id" required class="w-full bg-surface-container-lowest border-outline-variant/20 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all appearance-none cursor-pointer outline-none">
-                                        <option value="" disabled>Select Department / Staff</option>
-                                        <option v-for="emp in employees" :key="emp.employee_id" :value="emp.employee_id">
-                                            {{ emp.name }} — {{ emp.department }}
-                                        </option>
-                                    </select>
-                                    <span class="material-symbols-outlined absolute right-3 top-3 pointer-events-none text-outline">expand_more</span>
+                    <form @submit.prevent="submit" class="space-y-6 pb-12" @click.stop>
+                        <div class="bg-white rounded-3xl p-8 shadow-sm border border-stone-100">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div class="space-y-3">
+                                    <label class="text-[10px] font-bold uppercase tracking-widest text-primary/60">Manual Pass Identifier</label>
+                                    <div class="relative">
+                                        <input
+                                            v-model="form.pass_number"
+                                            required
+                                            class="w-full bg-stone-50 border-stone-200 border-2 rounded-xl focus:ring-primary focus:border-primary py-4 px-5 font-mono font-bold text-lg text-primary tracking-wider transition-all placeholder:text-stone-300"
+                                            placeholder="e.g. PO-11"
+                                            type="text"
+                                        />
+                                        <span class="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-primary/30" data-icon="fingerprint">fingerprint</span>
+                                    </div>
+                                    <p v-if="form.errors.pass_number" class="text-xs text-error mt-1">{{ form.errors.pass_number }}</p>
+                                </div>
+                                <div class="space-y-3">
+                                    <label class="text-[10px] font-bold uppercase tracking-widest text-stone-500">Purpose / Need</label>
+                                    <div class="relative">
+                                        <input
+                                            v-model="form.purpose"
+                                            required
+                                            class="w-full bg-stone-50 border-stone-100 rounded-xl focus:ring-primary focus:border-primary py-4 px-5 font-medium text-stone-700 transition-all placeholder:text-stone-300"
+                                            placeholder="Purpose of visit"
+                                            type="text"
+                                        />
+                                    </div>
                                 </div>
                             </div>
+
+                            <div class="mt-8 space-y-3">
+                                <label class="text-[10px] font-bold uppercase tracking-widest text-stone-500">Person to Meet</label>
+                                <Listbox v-model="form.employee_id">
+                                    <div class="relative">
+                                        <ListboxButton class="w-full text-left">
+                                            <div class="flex items-center gap-3 p-4 bg-stone-50 rounded-2xl border border-stone-100 group cursor-pointer hover:border-primary/20 transition-all">
+                                                <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold overflow-hidden shrink-0 border-2 border-white uppercase text-xs">
+                                                    {{ selectedEmployee ? selectedEmployee.name.substring(0,2) : '?' }}
+                                                </div>
+                                                <div class="flex-1">
+                                                    <p class="text-sm font-bold" :class="selectedEmployee ? 'text-primary' : 'text-stone-400 italic'">
+                                                        {{ selectedEmployee ? selectedEmployee.name : 'Select Person to Meet' }}
+                                                    </p>
+                                                    <p class="text-[10px] text-stone-400 capitalize">Lembah Sari Staff</p>
+                                                </div>
+                                                <span class="material-symbols-outlined text-stone-300" data-icon="expand_more">expand_more</span>
+                                            </div>
+                                        </ListboxButton>
+
+                                        <transition
+                                            enter-active-class="transition duration-100 ease-out"
+                                            enter-from-class="transform scale-95 opacity-0"
+                                            enter-to-class="transform scale-100 opacity-100"
+                                            leave-active-class="transition duration-75 ease-in"
+                                            leave-from-class="transform scale-100 opacity-100"
+                                            leave-to-class="transform scale-95 opacity-0"
+                                        >
+                                            <ListboxOptions class="absolute z-[100] mt-1 max-h-60 w-full overflow-auto rounded-2xl bg-white/95 backdrop-blur-xl py-2 shadow-2xl ring-1 ring-black/5 focus:outline-none sm:text-sm">
+                                                <ListboxOption
+                                                    v-for="emp in employees"
+                                                    :key="emp.employee_id"
+                                                    :value="emp.employee_id"
+                                                    as="template"
+                                                    v-slot="{ active, selected }"
+                                                >
+                                                    <li :class="[active ? 'bg-primary/5 text-primary font-bold' : 'text-stone-600', 'relative cursor-pointer select-none py-3 pl-10 pr-4 transition-all']">
+                                                        <span :class="[selected ? 'font-bold' : 'font-normal', 'block truncate']">{{ emp.name }}</span>
+                                                        <span v-if="selected" class="absolute inset-y-0 left-0 flex items-center pl-3 text-primary">
+                                                            <span class="material-symbols-outlined text-sm">check</span>
+                                                        </span>
+                                                    </li>
+                                                </ListboxOption>
+                                            </ListboxOptions>
+                                        </transition>
+                                    </div>
+                                </Listbox>
+                                <p v-if="form.errors.employee_id" class="text-xs text-error mt-1">{{ form.errors.employee_id }}</p>
+                            </div>
                         </div>
 
-                        <!-- Single Block 2: Visitor Credentials -->
-                        <div class="border-t border-outline-variant/20 pt-6">
-                            <div class="flex items-center justify-between mb-4">
-                                <label class="text-xs font-bold uppercase tracking-widest text-outline ml-1">Guest Profiles</label>
-                                <button type="button" @click="addVisitor" v-if="form.visitors.length < 5" class="text-[10px] text-primary font-bold uppercase tracking-widest hover:underline">+ Add Guest</button>
+                        <div class="bg-white rounded-3xl p-8 shadow-sm border border-stone-100">
+                            <div class="flex justify-between items-center mb-6">
+                                <div class="flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-primary" data-icon="person">person</span>
+                                    <h3 class="font-headline font-bold text-stone-800 uppercase tracking-wider text-sm">Guest Profiles</h3>
+                                </div>
+                                <button @click="addVisitor" v-if="form.visitors.length < 5" class="text-xs font-bold text-secondary flex items-center gap-1 hover:underline" type="button">
+                                    <span class="material-symbols-outlined text-sm" data-icon="add_circle">add_circle</span>
+                                    Add Another Guest
+                                </button>
                             </div>
+
                             <div class="space-y-4">
-                                <div v-for="(visitor, index) in form.visitors" :key="index" class="relative bg-surface-container-lowest border border-outline-variant/20 p-4 rounded-lg flex flex-col gap-3">
-                                    <input v-model="visitor.name" required class="w-full bg-transparent border-b border-outline-variant/30 px-2 py-1 text-sm focus:border-primary transition-all outline-none placeholder:text-outline/50" placeholder="Full Legal Name" type="text"/>
-                                    <input v-model="visitor.ic_number" required class="w-full bg-transparent border-b border-outline-variant/30 px-2 py-1 text-sm focus:border-primary transition-all outline-none placeholder:text-outline/50" placeholder="IC / Passport Identifier" type="text"/>
-                                    <button type="button" @click="removeVisitor(index)" v-if="form.visitors.length > 1" class="absolute right-3 top-3 text-outline hover:text-error transition-colors">
-                                        <span class="material-symbols-outlined text-sm">close</span>
+                                <div v-for="(visitor, index) in form.visitors" :key="index" class="p-6 bg-stone-50/50 rounded-2xl border border-stone-100 grid grid-cols-1 md:grid-cols-3 gap-4 relative group transition-all hover:bg-stone-50">
+                                    <div class="space-y-1">
+                                        <label class="text-[9px] font-bold uppercase text-stone-400">Full Name</label>
+                                        <input v-model="visitor.name" required class="w-full bg-white border-stone-200 rounded-lg text-sm transition-all focus:ring-primary/20 focus:border-primary" placeholder="John Doe" type="text"/>
+                                    </div>
+                                    <div class="space-y-1">
+                                        <label class="text-[9px] font-bold uppercase text-stone-400">Identification (IC)</label>
+                                        <input v-model="visitor.ic_number" required class="w-full bg-white border-stone-200 rounded-lg text-sm transition-all focus:ring-primary/20 focus:border-primary" placeholder="000000-00-0000" type="text"/>
+                                    </div>
+                                    <div class="space-y-1">
+                                        <label class="text-[9px] font-bold uppercase text-stone-400">Organization / Company</label>
+                                        <div class="flex gap-2">
+                                            <input v-model="visitor.company" class="flex-1 bg-white border-stone-200 rounded-lg text-sm transition-all focus:ring-primary/20 focus:border-primary" placeholder="Self-employed" type="text"/>
+
+                                            <Menu as="div" class="relative inline-block text-left">
+                                                <MenuButton class="p-2 bg-white border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors" title="Lookup Visitor">
+                                                    <span class="material-symbols-outlined text-stone-400 text-sm" data-icon="person_search">person_search</span>
+                                                </MenuButton>
+                                                <transition
+                                                    enter-active-class="transition duration-100 ease-out"
+                                                    enter-from-class="transform scale-95 opacity-0"
+                                                    enter-to-class="transform scale-100 opacity-100"
+                                                    leave-active-class="transition duration-75 ease-in"
+                                                    leave-from-class="transform scale-100 opacity-100"
+                                                    leave-to-class="transform scale-95 opacity-0"
+                                                >
+                                                    <MenuItems class="absolute right-0 z-[120] mt-1 max-h-60 w-72 overflow-auto rounded-xl bg-white border border-stone-200 py-2 shadow-2xl focus:outline-none scrollbar-hide">
+                                                        <div class="px-3 py-1 border-b border-stone-50 mb-1 sticky top-0 bg-white z-10">
+                                                            <input v-model="visitorSearchQuery" type="text" placeholder="Search by name or IC..." class="w-full text-xs border border-stone-100 rounded px-2 py-1.5 focus:ring-1 focus:ring-primary/20 outline-none" @click.stop />
+                                                        </div>
+                                                        <MenuItem v-for="v in filteredLookupVisitors" :key="v.visitor_id" v-slot="{ active }">
+                                                            <div :class="[active ? 'bg-primary/5 text-primary font-bold' : '', 'relative flex items-center justify-between group/item transition-colors w-full px-3 py-2']">
+                                                                <button
+                                                                    type="button"
+                                                                    @click="selectReturningVisitor(index, v)"
+                                                                    class="flex-1 flex flex-col text-left"
+                                                                >
+                                                                    <span class="text-xs font-bold">{{ v.name }}</span>
+                                                                    <span class="text-[10px] opacity-60 font-mono">{{ v.ic_number }} | {{ v.company }}</span>
+                                                                </button>
+                                                                <button type="button" @click.stop="deleteVisitor(v.visitor_id)" class="opacity-0 group-hover/item:opacity-100 hover:text-error transition-all font-bold p-1 absolute right-2 bg-white rounded-md shadow-sm" title="Delete Visitor">
+                                                                    <span class="material-symbols-outlined text-[16px]">delete</span>
+                                                                </button>
+                                                            </div>
+                                                        </MenuItem>
+                                                        <div v-if="filteredLookupVisitors.length === 0" class="px-3 py-4 text-center text-xs text-stone-400 italic">
+                                                            No matching records found.
+                                                        </div>
+                                                    </MenuItems>
+                                                </transition>
+                                            </Menu>
+                                        </div>
+                                    </div>
+
+                                    <button v-if="form.visitors.length > 1" @click="removeVisitor(index)" class="absolute -top-2 -right-2 w-6 h-6 bg-white border border-stone-200 rounded-full flex items-center justify-center text-stone-400 hover:text-error hover:border-error transition-all shadow-sm group-hover:opacity-100" type="button">
+                                        <span class="material-symbols-outlined text-[10px] font-bold">close</span>
                                     </button>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Single Block 3: Logistics (Vehicle + Items) -->
-                        <div class="border-t border-outline-variant/20 pt-6 space-y-4">
-                            <label class="text-xs font-bold uppercase tracking-widest text-outline ml-1">Logistics & Items</label>
-                            <div class="grid grid-cols-2 gap-3 mt-2">
-                                <input v-model="form.vehicle_plate" class="bg-surface-container-lowest border-outline-variant/20 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:border-primary transition-all outline-none" placeholder="Plate (Optional)" type="text"/>
-                                <select v-model="form.vehicle_type" class="bg-surface-container-lowest border-outline-variant/20 rounded-lg px-3 py-2 text-sm appearance-none outline-none">
-                                    <option value="Car">Car</option>
-                                    <option value="Motorcycle">Motorbike</option>
-                                    <option value="Truck">Truck/Lorry</option>
-                                </select>
+                        <div class="bg-white rounded-3xl p-8 shadow-sm border border-stone-100">
+                            <div class="flex items-center gap-2 mb-6">
+                                <span class="material-symbols-outlined text-primary" data-icon="local_shipping">local_shipping</span>
+                                <h3 class="font-headline font-bold text-stone-800 uppercase tracking-wider text-sm">Logistics & Hardware</h3>
                             </div>
-                            <div class="flex items-center justify-between mt-4 mb-2">
-                                <span class="text-[10px] text-outline italic">Declared Items</span>
-                                <button type="button" @click="addItem" class="text-[10px] text-primary font-bold uppercase tracking-widest hover:underline">+ Hardware</button>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div class="space-y-4">
+                                    <div class="space-y-2">
+                                        <label class="text-[10px] font-bold uppercase tracking-widest text-stone-500">Vehicle Plate Number</label>
+                                        <input
+                                            v-model="form.vehicle_plate"
+                                            class="w-full bg-stone-50 border-stone-100 rounded-xl py-4 px-5 text-lg font-bold tracking-widest text-primary focus:ring-primary focus:border-primary transition-all placeholder:font-normal placeholder:tracking-normal placeholder:text-stone-300"
+                                            placeholder="ABC 1234"
+                                            type="text"
+                                        />
+                                    </div>
+                                    <div class="p-4 rounded-2xl bg-primary/5 border border-primary/10">
+                                        <p class="text-[10px] font-bold text-primary mb-1 uppercase tracking-tight">Security Protocol</p>
+                                        <p class="text-xs font-medium text-on-surface-variant leading-relaxed italic opacity-80">Check-in items to ensure secure site exit processing at conclusion of visit.</p>
+                                    </div>
+                                </div>
+
+                                <div class="space-y-3">
+                                    <label class="text-[10px] font-bold uppercase tracking-widest text-stone-500">Hardware Declaration</label>
+                                    <div class="space-y-2">
+                                        <div v-for="(item, index) in form.items" :key="'item'+index" class="flex items-center gap-2 p-3 bg-stone-50 rounded-xl border border-stone-100 group">
+                                            <div class="flex-1 min-w-0">
+                                                <input v-model="item.item_name" class="w-full bg-transparent border-none p-0 text-xs font-bold text-stone-800 focus:ring-0 truncate" placeholder="Item Name"/>
+                                                <div class="flex items-center gap-2 mt-0.5">
+                                                    <input v-model="item.quantity" type="number" min="1" class="w-8 bg-white border border-stone-200 rounded px-1 py-0.5 text-[10px] font-bold text-center"/>
+                                                    <input v-model="item.remarks" class="flex-1 bg-transparent border-none p-0 text-[10px] text-stone-500 focus:ring-0 italic" placeholder="SN / Remarks"/>
+                                                </div>
+                                            </div>
+                                            <button @click="removeItem(index)" class="text-stone-300 hover:text-error transition-colors" type="button">
+                                                <span class="material-symbols-outlined text-lg" data-icon="cancel">cancel</span>
+                                            </button>
+                                        </div>
+                                        <button @click="addItem" class="w-full py-3 border-2 border-dashed border-stone-200 rounded-xl text-stone-400 text-[10px] font-black uppercase tracking-widest hover:bg-stone-50 hover:border-primary/20 hover:text-primary transition-all" type="button">
+                                            + Declare Item
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
-                            <div v-for="(item, index) in form.items" :key="'item'+index" class="flex items-center gap-2 bg-surface-container-lowest border border-outline-variant/20 rounded-lg p-2">
-                                <input v-model="item.item_name" required class="flex-1 bg-transparent border-none text-xs focus:ring-0 p-1 placeholder:text-outline/50 outline-none" placeholder="Item Name" type="text"/>
-                                <input v-model="item.quantity" min="1" required class="w-12 bg-transparent border-none text-xs focus:ring-0 p-1 outline-none text-center" type="number"/>
-                                <button type="button" @click="removeItem(index)" class="text-outline hover:text-error mr-1">
-                                    <span class="material-symbols-outlined text-xs">delete</span>
+                        </div>
+
+                        <div class="space-y-4 pt-4 border-t border-stone-100 mt-6">
+                            <div class="flex items-center justify-between px-1">
+                                <label class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">
+                                    {{ selectedVisitForCheckout ? 'Manual Check-Out Time' : 'Manual Check-In Time' }}
+                                </label>
+                                <button @click="showManualTime = !showManualTime" class="w-10 h-5 rounded-full relative transition-colors duration-200" :class="showManualTime ? 'bg-primary' : 'bg-stone-200'" type="button">
+                                    <span class="absolute top-1 bg-white w-3 h-3 rounded-full transition-all duration-200" :class="showManualTime ? 'left-6' : 'left-1'"></span>
                                 </button>
                             </div>
-                        </div>
-
-                        <!-- Single Block 4: Intake Signatures -->
-                        <div class="border-t border-outline-variant/20 pt-6 space-y-4">
-                            <label class="text-xs font-bold uppercase tracking-widest text-outline ml-1">Pre-Registration Signatures</label>
-                            <p class="text-[10px] text-stone-500 italic ml-1 mb-2">Both the Duty Guard and Primary Visitor must acknowledge pre-registration before host verification.</p>
-                            
-                            <div class="grid grid-cols-2 gap-4">
-                                <!-- Guard Pad Inline -->
-                                <div class="flex flex-col border border-stone-200 rounded-lg overflow-hidden relative bg-white h-32">
-                                    <div class="bg-stone-100 py-1 border-b border-stone-200 text-center flex justify-between px-2 items-center">
-                                        <p class="text-[9px] font-extrabold text-stone-500 uppercase tracking-widest">Post Guard</p>
-                                        <button v-if="padState.guard.hasDrawn" @click="clearDraw('guard')" type="button" class="text-[10px] text-stone-400 hover:text-stone-600"><span class="material-symbols-outlined text-[12px]">refresh</span></button>
-                                    </div>
-                                    <div class="flex-1 relative">
-                                        <canvas ref="guardCanvasRef" class="w-full h-full cursor-crosshair touch-none absolute inset-0" 
-                                            @mousedown="startDraw($event, 'guard')" @mousemove="draw($event, 'guard')" @mouseup="stopDraw('guard')" @mouseleave="stopDraw('guard')"
-                                            @touchstart="startDraw($event, 'guard')" @touchmove="draw($event, 'guard')" @touchend="stopDraw('guard')"></canvas>
-                                        <span v-if="!padState.guard.hasDrawn" class="absolute inset-0 flex items-center justify-center text-[10px] text-stone-300 pointer-events-none italic">Guard Sign Here</span>
+                            <transition
+                                enter-active-class="transition duration-200 ease-out"
+                                enter-from-class="opacity-0 -translate-y-2"
+                                enter-to-class="opacity-100 translate-y-0"
+                                leave-active-class="transition duration-150 ease-in"
+                                leave-from-class="opacity-100 translate-y-0"
+                                leave-to-class="opacity-0 -translate-y-2"
+                            >
+                                <div v-if="showManualTime" class="relative">
+                                    <input v-if="selectedVisitForCheckout" v-model="form.check_out_time" type="time" class="w-full bg-stone-50 border-stone-100 rounded-xl px-4 py-3 text-sm focus:ring-primary focus:border-primary transition-all font-medium" />
+                                    <input v-else v-model="form.check_in_time" type="time" class="w-full bg-stone-50 border-stone-100 rounded-xl px-4 py-3 text-sm focus:ring-primary focus:border-primary transition-all font-medium" />
+                                    
+                                    <div class="mt-2 text-[10px] text-stone-500 font-medium flex items-center gap-1.5 opacity-70">
+                                        <span class="material-symbols-outlined text-sm">history</span>
+                                        Overrides automatic system timestamp
                                     </div>
                                 </div>
-                                <!-- Visitor Pad Inline -->
-                                <div class="flex flex-col border border-stone-200 rounded-lg overflow-hidden relative bg-white h-32">
-                                    <div class="bg-stone-100 py-1 border-b border-stone-200 text-center flex justify-between px-2 items-center">
-                                        <p class="text-[9px] font-extrabold text-[#3e0007] uppercase tracking-widest">Visitor</p>
-                                        <button v-if="padState.visitor.hasDrawn" @click="clearDraw('visitor')" type="button" class="text-[10px] text-stone-400 hover:text-stone-600"><span class="material-symbols-outlined text-[12px]">refresh</span></button>
-                                    </div>
-                                    <div class="flex-1 relative">
-                                        <canvas ref="visitorCanvasRef" class="w-full h-full cursor-crosshair touch-none absolute inset-0" 
-                                            @mousedown="startDraw($event, 'visitor')" @mousemove="draw($event, 'visitor')" @mouseup="stopDraw('visitor')" @mouseleave="stopDraw('visitor')"
-                                            @touchstart="startDraw($event, 'visitor')" @touchmove="draw($event, 'visitor')" @touchend="stopDraw('visitor')"></canvas>
-                                        <span v-if="!padState.visitor.hasDrawn" class="absolute inset-0 flex items-center justify-center text-[10px] text-stone-300 pointer-events-none italic">Visitor Sign Here</span>
-                                    </div>
-                                </div>
-                            </div>
+                            </transition>
                         </div>
 
-                        <!-- Footer Submit Button -->
-                        <div class="pt-6 border-t border-outline-variant/20">
-                            <button type="submit" :disabled="form.processing || !padState.guard.hasDrawn || !padState.visitor.hasDrawn" class="w-full signature-gradient text-white font-label text-sm font-bold tracking-widest uppercase py-4 rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50">
-                                Pre-Approve Registration
+                        <div class="flex items-center justify-between gap-4 pt-4 mt-2">
+                            <button @click="form.reset(); selectedVisitForCheckout = null; showManualTime = false;" class="px-8 py-4 text-stone-500 font-bold text-sm hover:text-primary transition-colors uppercase tracking-widest" type="button">Reset Entry</button>
+                            <button
+                                type="submit"
+                                :disabled="form.processing || actionForm.processing"
+                                class="px-10 py-5 text-white font-bold rounded-2xl shadow-xl flex items-center gap-3 group transition-all active:scale-95 disabled:opacity-50"
+                                :class="selectedVisitForCheckout ? 'bg-gradient-to-br from-red-500 to-red-600 shadow-red-500/20 hover:scale-[1.02]' : 'bg-gradient-to-br from-[#72d473] to-[#72d473] shadow-primary/20 hover:scale-[1.02]'"
+                            >
+                                <span class="font-headline tracking-wider uppercase text-sm">{{ selectedVisitForCheckout ? 'Check Out' : 'Register & Check In' }}</span>
+                                <span v-if="!selectedVisitForCheckout" class="material-symbols-outlined text-white/50 group-hover:translate-x-1 group-hover:text-white transition-all" data-icon="check_circle">check_circle</span>
+                                <span v-else class="material-symbols-outlined text-white/50 group-hover:translate-x-1 group-hover:text-white transition-all" data-icon="logout">logout</span>
                             </button>
                         </div>
                     </form>
                 </div>
 
-                <!-- RIGHT COLUMN: Live Status Feed -->
-                <div class="lg:col-span-7 bg-surface-container-low rounded-xl overflow-hidden shadow-sm flex flex-col h-full border border-transparent">
-                    <div class="p-6 md:p-8 flex justify-between items-center bg-surface-container-lowest border-b border-outline-variant/10">
-                        <div class="flex items-center gap-3">
-                            <span class="material-symbols-outlined text-primary" data-icon="sensors">sensors</span>
-                            <h3 class="font-headline font-bold text-lg text-on-surface">Live Visitor Feed</h3>
-                        </div>
-                        <span class="relative flex h-3 w-3">
-                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                            <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-                        </span>
-                    </div>
-
-                    <div class="flex-1 overflow-x-auto px-4 py-4 h-[700px] overflow-y-auto bg-surface-container-low/50">
-                        <div v-if="todayVisits.length === 0" class="flex flex-col items-center justify-center h-full text-outline gap-3 text-center px-4">
-                            <span class="material-symbols-outlined text-4xl opacity-50" data-icon="meeting_room">meeting_room</span>
-                            <p class="font-medium text-sm">No visitor passes generated today.<br>Pre-register someone on the left.</p>
+                <div class="lg:col-span-5 flex flex-col h-full max-h-[calc(100vh-10rem)] sticky top-24">
+                    <div class="bg-white/90 backdrop-blur-xl rounded-[2rem] flex-1 flex flex-col overflow-hidden shadow-xl shadow-stone-200/50 border border-stone-200/60">
+                        <div class="p-8 border-b border-stone-100 flex items-center justify-between bg-stone-50/50">
+                            <div>
+                                <h3 class="text-stone-800 font-headline font-bold text-lg tracking-tight">Live Feed</h3>
+                                <p class="text-stone-400 text-[10px] uppercase tracking-widest font-black">Active Engagements</p>
+                            </div>
+                            <div class="flex items-center gap-2 bg-white px-4 py-2 rounded-full border border-stone-100 shadow-sm">
+                                <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.4)]"></span>
+                                <span class="text-[11px] font-black text-stone-600 uppercase tracking-tighter">{{ todayVisits.filter(v => v.status === 'Active').length }} Onsite</span>
+                            </div>
                         </div>
 
-                        <!-- Card style list to accomodate all actions beautifully without table constraint -->
-                        <div v-else class="space-y-3 pb-8">
-                            <div v-for="visit in todayVisits" :key="visit.visit_id" class="bg-surface-container-lowest border border-outline-variant/10 p-5 rounded-xl hover:shadow-md transition-all group relative overflow-hidden">
-                                
-                                <!-- Decorative pass side stripe -->
-                                <div class="absolute left-0 top-0 bottom-0 w-1.5" 
-                                     :class="visit.status === 'Active' ? 'bg-secondary' : (visit.status === 'Checked Out' ? 'bg-green-500' : (visit.status === 'Approved' ? 'bg-amber-500' : 'bg-surface-variant'))">
+                        <div class="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-hide">
+                            <div v-if="todayVisits.length === 0" class="flex flex-col items-center justify-center h-48 text-stone-300 gap-4">
+                                <span class="material-symbols-outlined text-5xl">sensors_off</span>
+                                <p class="text-xs font-bold uppercase tracking-widest">No active visitors</p>
+                            </div>
+
+                            <div v-for="visit in todayVisits" :key="visit.visit_id"
+                                @click.stop="handleLiveFeedClick(visit)"
+                                class="group relative flex gap-4 p-5 bg-white rounded-2xl transition-all border border-l-4 shadow-sm"
+                                :class="{
+                                    'border-l-emerald-500 cursor-pointer hover:bg-stone-50 hover:shadow-md': visit.status === 'Active' && (!selectedVisitForCheckout || selectedVisitForCheckout.visit_id !== visit.visit_id),
+                                    'bg-emerald-50 border-emerald-500 shadow-md ring-2 ring-emerald-500/20': selectedVisitForCheckout && selectedVisitForCheckout.visit_id === visit.visit_id,
+                                    'border-l-amber-400': visit.status === 'Approved',
+                                    'border-l-stone-200 opacity-60 grayscale': visit.status === 'Checked Out'
+                                }"
+                            >
+                                <div class="w-12 h-12 rounded-full flex items-center justify-center font-bold shrink-0 text-xs shadow-inner"
+                                     :class="visit.status === 'Active' ? 'bg-emerald-50 text-emerald-600' : (visit.status === 'Checked Out' ? 'bg-stone-100 text-stone-400' : 'bg-amber-50 text-amber-600')">
+                                    {{ visit.visitors && visit.visitors.length > 0 ? visit.visitors[0].name.substring(0,2).toUpperCase() : 'V' }}
                                 </div>
-
-                                <div class="pl-3 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-                                    <div class="flex items-center gap-4">
-                                        <div class="w-12 h-12 rounded-full border-2 border-primary/10 flex items-center justify-center font-bold text-primary bg-primary/5 uppercase ring-2 ring-white z-10">
-                                            {{ visit.visitors && visit.visitors.length > 0 ? visit.visitors[0].name.substring(0,2) : 'V' }}
-                                        </div>
-                                        <div>
-                                            <div class="flex items-center gap-2">
-                                                <h4 class="font-bold text-on-surface text-sm">{{ visit.visitors && visit.visitors.length > 0 ? visit.visitors[0].name : 'Unknown Guest' }}</h4>
-                                                <span v-if="visit.visitors.length > 1" class="text-[9px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded leading-none">+{{visit.visitors.length - 1}}</span>
-                                            </div>
-                                            <div class="flex items-center gap-2 mt-1">
-                                                <span class="font-mono text-[10px] font-bold text-secondary tracking-widest">{{ visit.pass_number }}</span>
-                                                <span class="text-[10px] text-outline font-medium">• Host: {{ visit.employee ? visit.employee.name : 'Unknown' }}</span>
-                                            </div>
-                                        </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex justify-between items-start">
+                                        <h4 class="text-stone-800 font-bold text-sm truncate tracking-tight">{{ visit.visitors && visit.visitors.length > 0 ? visit.visitors[0].name : 'Unknown Guest' }}</h4>
+                                        <span class="text-[10px] font-mono font-bold text-stone-400 tracking-widest">{{ visit.pass_number }}</span>
                                     </div>
+                                    <p class="text-stone-500 text-[10px] mt-0.5 font-bold uppercase tracking-wide">Host: {{ visit.employee ? visit.employee.name : 'Unknown' }}</p>
 
-                                    <!-- Right aligned Time metrics / Status -->
-                                    <div class="flex items-center gap-4 w-full md:w-auto mt-2 md:mt-0 pt-2 md:pt-0 border-t md:border-t-0 border-outline-variant/10 md:justify-end">
-                                        
-                                        <!-- Timestamps if active/checked out -->
-                                        <div v-if="visit.check_in_time" class="flex flex-col items-end md:mr-2">
-                                            <span class="text-[10px] font-bold uppercase tracking-wider text-outline">Arrival</span>
-                                            <span class="text-xs font-mono font-medium text-on-surface">{{ formatTime(visit.check_in_time) }}</span>
+                                    <div class="flex items-center gap-4 mt-3">
+                                        <div class="text-[10px]">
+                                            <span class="text-stone-400 font-black uppercase mr-1.5 tracking-tighter">In</span>
+                                            <span class="text-stone-600 font-mono font-bold">{{ formatTime(visit.check_in_time) }}</span>
                                         </div>
-                                        <div v-if="visit.check_out_time" class="flex flex-col items-end">
-                                            <span class="text-[10px] font-bold uppercase tracking-wider text-outline">Departure</span>
-                                            <span class="text-xs font-mono font-bold text-green-600">{{ formatTime(visit.check_out_time) }}</span>
+                                        <div v-if="visit.check_out_time" class="text-[10px]">
+                                            <span class="text-stone-400 font-black uppercase mr-1.5 tracking-tighter">Out</span>
+                                            <span class="text-stone-600 font-mono font-bold">{{ formatTime(visit.check_out_time) }}</span>
                                         </div>
-
-                                        <!-- The physical Action Buttons -->
-                                        <div class="flex flex-col gap-1 items-end min-w-[100px]">
-                                            <!-- Print Pass Button (Available for all generated passes) -->
-                                            <Link :href="route('visits.pass', visit.visit_id)" class="w-full text-[10px] bg-stone-100 text-stone-600 px-3 py-1.5 rounded shadow-sm hover:bg-stone-200 transition-colors font-bold uppercase tracking-widest flex items-center justify-center gap-1 mb-1">
-                                                <span class="material-symbols-outlined text-[14px]">print</span> Print Pass
-                                            </Link>
-                                            
-                                            <button v-if="visit.status === 'Approved'" @click="checkInVisitor(visit)" :disabled="actionForm.processing" class="w-full text-[10px] bg-secondary text-white px-3 py-1.5 rounded shadow-sm hover:opacity-90 transition-opacity font-bold uppercase tracking-widest flex items-center justify-center gap-1">
-                                                <span class="material-symbols-outlined text-[14px]">login</span> Check In
-                                            </button>
-                                            <button v-else-if="visit.status === 'Active'" @click="checkOutVisitor(visit)" :disabled="actionForm.processing" class="w-full text-[10px] border border-outline font-bold text-outline px-3 py-1.5 rounded hover:bg-surface-container transition-colors uppercase tracking-widest flex items-center justify-center gap-1">
-                                                <span class="material-symbols-outlined text-[14px]">logout</span> Check Out
-                                            </button>
-                                            <span v-else class="text-[10px] font-bold uppercase tracking-widest px-2 py-1 bg-surface-container rounded border border-outline-variant/20 inline-block text-center w-full" :class="{'text-amber-600': visit.status==='Pending'}">
-                                                {{ visit.status }}
-                                            </span>
-                                        </div>
-
                                     </div>
                                 </div>
                             </div>
                         </div>
 
+                        <div class="p-6 bg-stone-50/50 border-t border-stone-100">
+                            <Link :href="route('history.index')" class="w-full py-4 bg-white text-stone-600 border border-stone-200 font-black text-xs rounded-2xl hover:bg-stone-50 hover:text-stone-800 transition-all uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-sm">
+                                Archive Vault
+                                <span class="material-symbols-outlined text-sm">history_edu</span>
+                            </Link>
+                        </div>
                     </div>
                 </div>
 
@@ -378,7 +475,14 @@ const calculateDuration = (checkInTime) => {
 .signature-gradient {
     background: linear-gradient(135deg, #3e0007 0%, #620814 100%);
 }
-.editorial-shadow {
-    box-shadow: 0 10px 30px rgba(27, 28, 28, 0.05);
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+.bento-glass {
+    backdrop-filter: blur(20px);
 }
 </style>

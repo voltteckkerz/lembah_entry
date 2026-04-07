@@ -7,7 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 class Employee extends Model
 {
     protected $primaryKey = 'employee_id';
-    protected $fillable = ['name', 'department', 'plate_number'];
+
+    protected $fillable = ['name', 'plate_number', 'is_supervisor'];
 
     public function visits()
     {
