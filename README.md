@@ -1,58 +1,241 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
-
 <p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
+    <img src="https://img.shields.io/badge/Laravel-13-FF2D20?style=for-the-badge&logo=laravel&logoColor=white" alt="Laravel 13">
+    <img src="https://img.shields.io/badge/Vue.js-3-4FC08D?style=for-the-badge&logo=vue.js&logoColor=white" alt="Vue 3">
+    <img src="https://img.shields.io/badge/Inertia.js-2-7C3AED?style=for-the-badge&logo=inertia&logoColor=white" alt="Inertia.js">
+    <img src="https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker">
 </p>
 
-## About Laravel
+# Lembah Entry — Visitor Management System
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+A fully-featured Visitor Management System designed for residential security operations. Guards can register visitors, track attendance, generate reports, and communicate with the System Overseer — all through a sleek, modern bento-style interface.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+---
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## ✨ Features
 
-## Learning Laravel
+- **Visitor Registration** — Check-in/check-out with manual time override toggle
+- **Staff Attendance** — Daily clock-in/clock-out tracking with calendar-based history
+- **Archive & Reports** — Date-filtered logs with downloadable PDF/CSV exports
+- **Internal Chat** — Real-time pseudo-live messaging between Guards and Admin
+- **User Management** — Admin panel for guard credential management and password resets
+- **Support Alerts** — Guards can request password resets; tickets auto-resolve on action
+- **Global Notifications** — Toast popups and sidebar badges for incoming messages (with audio ping)
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+---
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## 📋 Prerequisites
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+Choose **one** of the two setup methods below:
 
-## Agentic Development
+### Option A: Docker (Recommended)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+### Option B: Local Development
+- **PHP** >= 8.3
+- **Composer** >= 2.x
+- **Node.js** >= 20.x & **npm**
+- **MySQL** 8.x (via XAMPP, WAMP, or standalone)
+
+---
+
+## 🐳 Getting Started — Docker
+
+The fastest way to get up and running. No PHP, Node.js, or MySQL installation needed.
+
+### 1. Clone the repository
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+git clone https://github.com/your-username/lembah-entry.git
+cd lembah-entry
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+### 2. Create your environment file
 
-## Contributing
+```bash
+cp .env.example .env
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+> The defaults in `.env.example` are pre-configured for Docker. You can adjust `DB_PASSWORD` or `APP_PORT` if needed.
 
-## Code of Conduct
+### 3. Build and start containers
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```bash
+docker compose up --build -d
+```
 
-## Security Vulnerabilities
+This will:
+- Install PHP & Node.js dependencies
+- Build Vite frontend assets
+- Start **MySQL**, **Redis**, and the **App** containers
+- Automatically run database migrations
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### 4. Seed the database (first time only)
 
-## License
+```bash
+docker compose exec app php artisan db:seed
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+This creates the default Admin account:
+| Field | Value |
+|-------|-------|
+| Username | `admin` |
+| Password | `password` |
+
+### 5. Access the application
+
+Open your browser and navigate to:
+
+```
+http://localhost:8000
+```
+
+### Docker Commands Reference
+
+```bash
+# View real-time logs
+docker compose logs -f app
+
+# Stop all services
+docker compose down
+
+# Reset database (wipes all data)
+docker compose exec app php artisan migrate:fresh --seed
+
+# Enter the app container shell
+docker compose exec app bash
+```
+
+---
+
+## 💻 Getting Started — Local Development
+
+For developers who want hot-reloading and a traditional dev environment.
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/your-username/lembah-entry.git
+cd lembah-entry
+```
+
+### 2. Install dependencies
+
+```bash
+composer install
+npm install
+```
+
+### 3. Configure the environment
+
+```bash
+cp .env.example .env
+php artisan key:generate
+```
+
+Edit `.env` and update the database settings to match your local MySQL:
+
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=vms_db
+DB_USERNAME=root
+DB_PASSWORD=
+```
+
+> **Note:** You must create the `vms_db` database manually in phpMyAdmin or MySQL CLI before proceeding.
+
+### 4. Run migrations and seed
+
+```bash
+php artisan migrate
+php artisan db:seed
+```
+
+### 5. Start the development servers
+
+Open **two terminals**:
+
+**Terminal 1 — Laravel Backend:**
+```bash
+php artisan serve
+```
+
+**Terminal 2 — Vite Frontend (hot-reload):**
+```bash
+npm run dev
+```
+
+### 6. Access the application
+
+```
+http://127.0.0.1:8000
+```
+
+---
+
+## 🔐 Default Accounts
+
+After seeding, the following account is available:
+
+| Role | Username | Password |
+|------|----------|----------|
+| Admin | `admin` | `password` |
+
+> Guards can be registered by the Admin through the **User Management** panel.
+
+---
+
+## 🗂 Project Structure
+
+```
+lembah-entry/
+├── app/
+│   ├── Http/Controllers/     # Laravel controllers
+│   └── Models/               # Eloquent models
+├── database/
+│   ├── migrations/           # Database schema
+│   └── seeders/              # Seed data
+├── docker/                   # Docker configuration files
+│   ├── entrypoint.sh         # Container startup script
+│   ├── nginx.conf            # Nginx web server config
+│   ├── php.ini               # PHP production settings
+│   └── supervisord.conf      # Process manager config
+├── resources/
+│   ├── js/
+│   │   ├── Components/       # Reusable Vue components
+│   │   ├── Layouts/          # App layout (sidebar, nav, toasts)
+│   │   └── Pages/            # Page-level Vue components
+│   │       ├── Attendance/   # Staff attendance module
+│   │       ├── Chat/         # Internal messaging system
+│   │       ├── History/      # Archive & report viewer
+│   │       ├── Users/        # Admin user management
+│   │       └── Visit/        # Visitor registration
+│   └── css/                  # Stylesheets
+├── routes/
+│   └── web.php               # Application routes
+├── compose.yaml              # Docker Compose orchestration
+├── Dockerfile                # Multi-stage container build
+└── .env.example              # Environment template
+```
+
+---
+
+## 🛠 Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| **Backend** | Laravel 13, PHP 8.3 |
+| **Frontend** | Vue 3, Inertia.js 2 |
+| **Styling** | Tailwind CSS 3, Material Symbols |
+| **Build** | Vite 8 |
+| **Database** | MySQL 8.4 |
+| **Cache** | Redis |
+| **Containerization** | Docker, Docker Compose |
+| **Web Server** | Nginx (Docker) / PHP Built-in (Local) |
+
+---
+
+## 📄 License
+
+This project is open-sourced software licensed under the [MIT License](https://opensource.org/licenses/MIT).

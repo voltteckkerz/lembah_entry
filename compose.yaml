@@ -1,0 +1,86 @@
+# =============================================================================
+# Lembah Entry VMS — Docker Compose
+# =============================================================================
+
+services:
+    app:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        container_name: lembah-entry-app
+        restart: unless-stopped
+        ports:
+            - "${APP_PORT:-8000}:80"
+        environment:
+            APP_NAME: "LembahEntry"
+            APP_ENV: production
+            APP_DEBUG: "false"
+            APP_URL: "http://localhost:${APP_PORT:-8000}"
+            APP_TIMEZONE: Asia/Kuala_Lumpur
+            DB_CONNECTION: mysql
+            DB_HOST: mysql
+            DB_PORT: 3306
+            DB_DATABASE: "${DB_DATABASE:-vms_db}"
+            DB_USERNAME: "${DB_USERNAME:-sail}"
+            DB_PASSWORD: "${DB_PASSWORD:-password}"
+            SESSION_DRIVER: database
+            CACHE_STORE: database
+            QUEUE_CONNECTION: sync
+            REDIS_HOST: redis
+            REDIS_PORT: 6379
+        volumes:
+            - app-storage:/var/www/html/storage
+        networks:
+            - lembah-net
+        depends_on:
+            mysql:
+                condition: service_healthy
+
+    mysql:
+        image: mysql:8.4
+        container_name: lembah-entry-db
+        restart: unless-stopped
+        ports:
+            - "${FORWARD_DB_PORT:-3306}:3306"
+        environment:
+            MYSQL_ROOT_PASSWORD: "${DB_PASSWORD:-password}"
+            MYSQL_ROOT_HOST: "%"
+            MYSQL_DATABASE: "${DB_DATABASE:-vms_db}"
+            MYSQL_USER: "${DB_USERNAME:-sail}"
+            MYSQL_PASSWORD: "${DB_PASSWORD:-password}"
+        volumes:
+            - mysql-data:/var/lib/mysql
+        networks:
+            - lembah-net
+        healthcheck:
+            test: ["CMD", "mysqladmin", "ping", "-p${DB_PASSWORD:-password}"]
+            interval: 10s
+            retries: 5
+            timeout: 5s
+
+    redis:
+        image: redis:alpine
+        container_name: lembah-entry-redis
+        restart: unless-stopped
+        ports:
+            - "${FORWARD_REDIS_PORT:-6379}:6379"
+        volumes:
+            - redis-data:/data
+        networks:
+            - lembah-net
+        healthcheck:
+            test: ["CMD", "redis-cli", "ping"]
+            retries: 3
+            timeout: 5s
+
+networks:
+    lembah-net:
+        driver: bridge
+
+volumes:
+    app-storage:
+        driver: local
+    mysql-data:
+        driver: local
+    redis-data:
+        driver: local

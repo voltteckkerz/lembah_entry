@@ -19,7 +19,7 @@ class DatabaseSeeder extends Seeder
         User::firstOrCreate(
             ['username' => 'admin'],
             [
-                'name' => 'Admin Curator',
+                'name' => 'Admin',
                 'password' => bcrypt('password'),
                 'role' => 'Admin',
             ]
@@ -27,12 +27,12 @@ class DatabaseSeeder extends Seeder
 
         Employee::firstOrCreate(
             ['name' => 'John Supervisor'],
-            ['department' => 'Security', 'is_supervisor' => true]
+            ['department' => 'Security']
         );
 
         Employee::firstOrCreate(
             ['name' => 'Jane Staff'],
-            ['department' => 'Operations', 'is_supervisor' => false]
+            ['department' => 'Operations']
         );
 
         /*

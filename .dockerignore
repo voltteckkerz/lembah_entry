@@ -1,0 +1,41 @@
+# Dependencies
+node_modules
+vendor
+
+# Build artifacts
+public/build
+public/hot
+
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# IDE and Editor
+.vscode
+.idea
+*.swp
+*.swo
+
+# Environment
+.env
+
+# Docker config (no recursion)
+docker-compose.yml
+compose.yaml
+Dockerfile
+
+# Tests
+tests
+phpunit.xml
+
+# Docs & misc
+README.md
+*.md
+seed_output.txt
+users.json
+inspect_db.php
+
+# OS files
+Thumbs.db
+.DS_Store
