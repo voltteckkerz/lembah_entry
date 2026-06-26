@@ -47,7 +47,7 @@ Route::get('/dashboard', function () {
             ? \App\Models\SupportRequest::where('status', 'Pending')->get()
             : [],
     ]);
-})->middleware(['auth', 'verified'])->name('dashboard');
+})->middleware(['auth'])->name('dashboard');
 
 // Support Requests (Guard Password Reset)
 Route::post('/support/password-reset', [\App\Http\Controllers\SupportRequestController::class, 'store'])->name('support.password_reset');
@@ -85,7 +85,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/history', [\App\Http\Controllers\HistoryController::class, 'index'])->name('history.index');
 
     // Visitor Access Actions
-    Route::get('/visits/{visit}/pass', [\App\Http\Controllers\VisitController::class, 'showPass'])->name('visits.pass');
     Route::patch('/visits/{visit}/sign', [\App\Http\Controllers\VisitController::class, 'sign'])->name('visits.sign');
     Route::patch('/visits/{visit}/check-in', function(\App\Models\Visit $visit, \Illuminate\Http\Request $request) {
         if ($visit->status === 'Approved') {

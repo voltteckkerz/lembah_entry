@@ -105,7 +105,7 @@ onUnmounted(() => {
                         menu_open
                     </span>
                 </button>
-                <img src="/images/LSSB logo.jpg" alt="LSSB Logo" class="h-14 w-auto object-contain" />
+                <img src="/images/LSSB logo.jpg" alt="LSSB Logo" class="h-14 w-auto object-contain rounded-lg" />
             </div>
 
             <div class="flex items-center gap-4">

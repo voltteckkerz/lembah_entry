@@ -48,8 +48,8 @@ const enableRegisterMode = (searchQuery = '') => {
 
 // Submits the registration using the main form's inputs
 const submitRegisterStaff = () => {
-    staffForm.name = query.value;
-    staffForm.plate_number = form.vehicle_plate;
+    staffForm.name = query.value.trim();
+    staffForm.plate_number = form.vehicle_plate ? form.vehicle_plate.trim() : '';
 
     staffForm.post(route('attendance.register-staff'), {
         onSuccess: () => {
@@ -266,7 +266,7 @@ const calculateDuration = (checkInTime) => {
                                                                 <span class="material-symbols-outlined text-sm">check</span>
                                                             </span>
                                                         </div>
-                                                        <button type="button" @click.stop="deleteStaff(staff.employee_id)" class="opacity-0 group-hover/item:opacity-100 hover:text-error transition-all font-bold p-1 absolute right-2" title="Delete Staff">
+                                                        <button type="button" @mousedown.prevent.stop @click.prevent.stop="deleteStaff(staff.employee_id)" class="opacity-0 group-hover/item:opacity-100 hover:text-error transition-all font-bold p-1 absolute right-2" title="Delete Staff">
                                                             <span class="material-symbols-outlined text-[16px]">delete</span>
                                                         </button>
                                                     </li>
@@ -278,8 +278,19 @@ const calculateDuration = (checkInTime) => {
                             </div>
                             
                             <div class="space-y-2">
-                                <label class="text-xs font-bold uppercase tracking-widest text-on-surface-variant px-1">Vehicle Plate (Optional)</label>
-                                <input v-model="form.vehicle_plate" class="w-full bg-surface-container-low border-none rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20 text-on-surface font-mono tracking-wider transition-all outline-none" placeholder="e.g. DXB 9928" type="text" />
+                                <label class="text-xs font-bold uppercase tracking-widest text-on-surface-variant px-1 flex items-center gap-1.5">
+                                    Vehicle Plate {{ isRegisterMode ? '' : '(Locked)' }}
+                                    <span v-if="!isRegisterMode && form.employee_id" class="material-symbols-outlined text-xs text-stone-400">lock</span>
+                                </label>
+                                <input 
+                                    v-model="form.vehicle_plate" 
+                                    :disabled="!isRegisterMode && !!form.employee_id"
+                                    class="w-full bg-surface-container-low border-none rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20 text-on-surface font-mono tracking-wider transition-all outline-none" 
+                                    :class="{'opacity-50 cursor-not-allowed bg-stone-100': !isRegisterMode && form.employee_id}"
+                                    placeholder="e.g. DXB 9928" 
+                                    type="text" 
+                                />
+                                <p v-if="!isRegisterMode && form.employee_id" class="text-[10px] text-stone-400 px-1">Plate is tied to this staff's profile. Register a new staff to use a different plate.</p>
                             </div>
 
                             <div class="space-y-4 pt-2">

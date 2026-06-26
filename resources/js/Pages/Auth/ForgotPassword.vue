@@ -1,9 +1,6 @@
 <script setup>
 import GuestLayout from '@/Layouts/GuestLayout.vue';
 import InputError from '@/Components/InputError.vue';
-import InputLabel from '@/Components/InputLabel.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
-import TextInput from '@/Components/TextInput.vue';
 import { Head, useForm, Link } from '@inertiajs/vue3';
 
 defineProps({
@@ -27,78 +24,99 @@ const submit = () => {
     <GuestLayout>
         <Head title="Forgot Password Assistance" />
 
-        <div class="mb-8 overflow-hidden rounded-2xl bg-primary/5 border border-primary/10 p-6 relative group">
-            <div class="relative z-10">
-                <div class="flex items-center gap-3 mb-3">
-                    <span class="material-symbols-outlined text-primary" data-icon="support_agent">support_agent</span>
-                    <h2 class="text-sm font-bold uppercase tracking-widest text-[#3e0007]">Guard Assistance</h2>
-                </div>
-                <p class="text-sm text-stone-600 leading-relaxed">
-                    Forgot your password? Enter your **Username** below to notify the System Admin. They will manually reset your access.
-                </p>
-            </div>
-            <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-primary/5 rounded-full blur-2xl group-hover:scale-120 transition-transform duration-700"></div>
+        <!-- Background Architectural Motif -->
+        <div class="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+            <div class="absolute -top-32 -right-32 w-96 h-96 bg-[#620814] rounded-full blur-[140px] opacity-[0.07]"></div>
+            <div class="absolute -bottom-32 -left-32 w-96 h-96 bg-[#63b0fd] rounded-full blur-[140px] opacity-[0.07]"></div>
         </div>
 
-        <div
-            v-if="status"
-            class="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-100 text-sm font-bold text-emerald-600 flex items-center gap-3"
-        >
-            <span class="material-symbols-outlined text-lg">check_circle</span>
-            {{ status }}
-        </div>
+        <!-- Auth Card Container -->
+        <div class="relative z-10 w-full max-w-lg bg-white/70 backdrop-blur-2xl rounded-[2rem] shadow-[0_32px_64px_rgba(62,0,7,0.08)] overflow-hidden border border-white/40">
+            <div class="p-8 md:p-12">
+                <!-- Header: Elegant Branding -->
+                <header class="text-center mb-10">
+                    <div class="flex justify-center mb-5">
+                        <div class="w-16 h-16 bg-gradient-to-br from-[#3e0007] to-[#620814] flex items-center justify-center rounded-2xl rotate-3 shadow-xl shadow-primary/20">
+                            <span class="material-symbols-outlined text-white text-3xl">support_agent</span>
+                        </div>
+                    </div>
+                    <h1 class="font-headline font-extrabold text-3xl tracking-tight text-[#3e0007]">Password Reset</h1>
+                    <p class="text-stone-500 font-medium mt-2 text-sm">Security & Management Portal</p>
+                </header>
 
-        <form @submit.prevent="submit" class="space-y-6">
-            <div>
-                <InputLabel for="username" value="Your Username" class="text-[10px] font-black uppercase tracking-widest text-stone-400 mb-2" />
-
-                <TextInput
-                    id="username"
-                    type="text"
-                    class="mt-1 block w-full bg-stone-50 border-stone-200 focus:ring-primary/20 focus:border-primary rounded-xl"
-                    v-model="form.username"
-                    required
-                    autofocus
-                    placeholder="Enter your login username"
-                />
-
-                <InputError class="mt-2" :message="form.errors.username" />
-            </div>
-
-            <div class="flex flex-col gap-3">
-                <button
-                    type="submit"
-                    :disabled="form.processing"
-                    class="w-full py-4 bg-[#3e0007] text-white rounded-xl font-bold text-xs uppercase tracking-[0.2em] shadow-lg shadow-primary/20 transition-all hover:bg-[#620814] active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                    <span class="material-symbols-outlined text-sm">send</span>
-                    Notify System Admin
-                </button>
-                
-                <div class="relative py-4 flex items-center">
-                    <div class="flex-grow border-t border-stone-100"></div>
-                    <span class="flex-shrink mx-4 text-[10px] font-black uppercase tracking-widest text-stone-300">Or Immediate Help</span>
-                    <div class="flex-grow border-t border-stone-100"></div>
+                <!-- Alert Box: Guard Assistance -->
+                <div class="bg-[#3e0007]/[0.03] rounded-2xl p-5 mb-8 border border-[#3e0007]/[0.06] flex items-start gap-4">
+                    <div class="flex-shrink-0 w-10 h-10 bg-[#3e0007]/10 rounded-full flex items-center justify-center">
+                        <span class="material-symbols-outlined text-[#3e0007] text-xl">shield_person</span>
+                    </div>
+                    <div class="space-y-1">
+                        <h4 class="font-headline font-bold text-[#3e0007] text-sm">Guard Assistance</h4>
+                        <p class="text-stone-500 text-sm leading-relaxed">
+                            Provide your username below. The system will notify the building administrator to facilitate a manual identity verification and password reset.
+                        </p>
+                    </div>
                 </div>
 
-                <a 
-                    href="https://wa.me/60123456789" 
-                    target="_blank"
-                    class="w-full py-4 bg-emerald-500 text-white rounded-xl font-bold text-xs uppercase tracking-[0.2em] shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-600 active:scale-95 flex items-center justify-center gap-2"
+                <!-- Success Status -->
+                <div
+                    v-if="status"
+                    class="flex items-center gap-3 bg-emerald-50 text-emerald-700 p-4 rounded-xl mb-6 border border-emerald-100"
                 >
-                    <span class="material-symbols-outlined text-sm">chat</span>
-                    Chat with Overseer
-                </a>
+                    <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                    <span class="text-sm font-semibold">{{ status }}</span>
+                </div>
+
+                <!-- Form Section -->
+                <form @submit.prevent="submit" class="space-y-6">
+                    <div class="space-y-2">
+                        <label class="block text-[10px] font-extrabold uppercase tracking-[0.15em] text-stone-400 ml-1" for="username">Your Username</label>
+                        <div class="relative">
+                            <input
+                                id="username"
+                                v-model="form.username"
+                                class="w-full bg-stone-100/80 border-0 rounded-xl px-5 py-4 text-stone-800 placeholder:text-stone-400/70 focus:ring-2 focus:ring-[#3e0007]/20 focus:bg-white transition-all duration-300 font-medium text-sm outline-none"
+                                placeholder="Enter system ID"
+                                type="text"
+                                required
+                                autofocus
+                            />
+                            <div class="absolute right-4 top-1/2 -translate-y-1/2 text-stone-300">
+                                <span class="material-symbols-outlined text-xl">badge</span>
+                            </div>
+                        </div>
+                        <InputError class="mt-2" :message="form.errors.username" />
+                    </div>
+
+                    <!-- Primary Action -->
+                    <button
+                        type="submit"
+                        :disabled="form.processing"
+                        class="w-full group relative overflow-hidden bg-gradient-to-br from-[#3e0007] to-[#620814] text-white py-4 px-6 rounded-xl font-headline font-bold flex items-center justify-center gap-2 shadow-lg shadow-[#3e0007]/20 active:scale-[0.97] transition-all duration-200 disabled:opacity-50 text-sm tracking-wide"
+                    >
+                        <span>Notify System Admin</span>
+                        <span class="material-symbols-outlined text-lg transition-transform group-hover:translate-x-1">send</span>
+                    </button>
+                </form>
+
+                <!-- Navigation -->
+                <div class="mt-10 text-center">
+                    <Link
+                        :href="route('login')"
+                        class="inline-flex items-center gap-2 text-sm font-bold text-stone-400 hover:text-[#3e0007] transition-colors duration-200"
+                    >
+                        <span class="material-symbols-outlined text-lg">arrow_back</span>
+                        Back to Login
+                    </Link>
+                </div>
             </div>
 
-            <div class="pt-4 text-center">
-                <Link
-                    :href="route('login')"
-                    class="text-xs font-bold text-stone-400 hover:text-primary transition-colors uppercase tracking-widest"
-                >
-                    Back to Login
-                </Link>
+            <!-- Bottom Footer Text -->
+            <div class="bg-stone-50/80 py-4 text-center border-t border-stone-100">
+                <p class="text-[10px] font-bold tracking-[0.2em] uppercase text-stone-400/60">Lembah Entry Security Protocol v1.0</p>
             </div>
-        </form>
+        </div>
     </GuestLayout>
 </template>
+
+<style scoped>
+</style>

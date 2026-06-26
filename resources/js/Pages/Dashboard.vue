@@ -191,15 +191,6 @@ const getStatusColor = (status) => {
                                                         <p class="text-[9px] font-bold text-stone-400 uppercase tracking-widest">Entry Actions</p>
                                                     </div>
 
-                                                    <MenuItem v-if="visit.status === 'Approved' || visit.status === 'Active'" v-slot="{ active }">
-                                                        <Link 
-                                                            :href="route('visits.pass', visit.visit_id)" 
-                                                            :class="[active ? 'bg-stone-50 text-primary' : 'text-stone-600', 'flex items-center gap-3 px-4 py-2.5 text-sm transition-colors cursor-pointer font-medium']"
-                                                        >
-                                                            <span class="material-symbols-outlined text-[18px] opacity-60">print</span>
-                                                            Print Pass
-                                                        </Link>
-                                                    </MenuItem>
 
                                                     <MenuItem v-if="visit.status === 'Approved'" v-slot="{ active }">
                                                         <button 

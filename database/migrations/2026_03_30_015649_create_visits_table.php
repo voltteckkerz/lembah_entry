@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id('visit_id');
             $table->foreignId('employee_id')->nullable()->constrained('employees', 'employee_id')->nullOnDelete();
             $table->foreignId('user_id')->nullable()->constrained('users', 'user_id')->nullOnDelete();
-            $table->string('pass_number', 50)->unique()->nullable();
+
             $table->date('visit_date')->nullable();
             $table->dateTime('check_in_time')->nullable();
             $table->dateTime('check_out_time')->nullable();

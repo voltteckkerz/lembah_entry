@@ -42,7 +42,7 @@ class ReportController extends Controller
                     'date' => $visit->visit_date,
                     'time_in' => $visit->check_in_time,
                     'time_out' => $visit->check_out_time,
-                    'pass' => $visit->pass_number,
+                    'pass' => $visitor->pivot->pass_number,
                 ];
             }
         }

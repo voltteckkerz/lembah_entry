@@ -11,6 +11,6 @@ class Visitor extends Model
 
     public function visits()
     {
-        return $this->belongsToMany(Visit::class, 'visit_visitor', 'visitor_id', 'visit_id');
+        return $this->belongsToMany(Visit::class, 'visit_visitor', 'visitor_id', 'visit_id')->withPivot('pass_number');
     }
 }

@@ -80,7 +80,7 @@ const filteredVisits = computed(() => {
     if (searchQuery.value) {
         const lowerQuery = searchQuery.value.toLowerCase();
         result = result.filter(v => 
-            v.pass_number.toLowerCase().includes(lowerQuery) || 
+            (v.visitors && v.visitors.some(vis => vis.pivot?.pass_number?.toLowerCase().includes(lowerQuery))) || 
             v.purpose.toLowerCase().includes(lowerQuery) ||
             (v.visitors && v.visitors.some(vis => vis.name.toLowerCase().includes(lowerQuery) || vis.ic_number.toLowerCase().includes(lowerQuery)))
         );
@@ -131,7 +131,7 @@ const exportToCSV = () => {
             const visitorName = v.visitors && v.visitors.length > 0 ? v.visitors[0].name : 'N/A';
             const icNumber = v.visitors && v.visitors.length > 0 ? v.visitors[0].ic_number : 'N/A';
             const row = [
-                v.pass_number,
+                (v.visitors && v.visitors.length > 0) ? v.visitors.map(vis => vis.pivot?.pass_number).filter(Boolean).join(' | ') : 'N/A',
                 dt.date,
                 dt.time,
                 visitorName,
@@ -292,7 +292,7 @@ const exportToPDF = () => {
                                     <span v-else class="text-[9px] font-black uppercase text-amber-500 animate-pulse tracking-widest">Active</span>
                                 </td>
                                 <td class="px-6 py-4">
-                                    <span class="font-black font-mono text-sm tracking-tight text-secondary">{{ visit.pass_number }}</span>
+                                    <span class="font-black font-mono text-sm tracking-tight text-secondary">{{ visit.visitors ? visit.visitors.map(v => v.pivot?.pass_number).filter(Boolean).join(', ') : '-' }}</span>
                                 </td>
                             </tr>
                             <tr v-if="filteredVisits.length === 0">

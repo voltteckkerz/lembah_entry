@@ -11,14 +11,13 @@ const props = defineProps({
 });
 
 const form = useForm({
-    pass_number: '',
     purpose: '',
     employee_id: '',
     vehicle_plate: '',
     visitors: [
-        { name: '', ic_number: '', company: '' }
+        { name: '', ic_number: '', company: '', pass_number: '' }
     ],
-    items: [],
+    remarks: '',
     check_in_time: '',
     check_out_time: '',
 });
@@ -46,7 +45,7 @@ const selectedEmployee = computed(() => {
 
 const addVisitor = () => {
     if (form.visitors.length < 5) {
-        form.visitors.push({ name: '', ic_number: '', company: '' });
+        form.visitors.push({ name: '', ic_number: '', company: '', pass_number: '' });
     }
 };
 
@@ -70,13 +69,6 @@ const deleteVisitor = (visitorId) => {
     }
 };
 
-const addItem = () => {
-    form.items.push({ item_name: '', quantity: 1, remarks: '' });
-};
-
-const removeItem = (index) => {
-    form.items.splice(index, 1);
-};
 
 const submit = () => {
     if (selectedVisitForCheckout.value) {
@@ -117,13 +109,12 @@ const handleLiveFeedClick = (visit) => {
     selectedVisitForCheckout.value = visit;
     showManualTime.value = false;
     
-    form.pass_number = visit.pass_number || '';
     form.purpose = visit.purpose || '';
     form.employee_id = visit.employee_id;
     form.vehicle_plate = visit.vehicles?.[0]?.plate_number || '';
     
     if (visit.visitors && visit.visitors.length > 0) {
-        form.visitors = visit.visitors.map(v => ({ name: v.name, ic_number: v.ic_number, company: v.company }));
+        form.visitors = visit.visitors.map(v => ({ name: v.name, ic_number: v.ic_number, company: v.company, pass_number: v.pivot?.pass_number || '' }));
     }
 };
 
@@ -160,20 +151,7 @@ const formatTime = (timeString) => {
                     <form @submit.prevent="submit" class="space-y-6 pb-12" @click.stop>
                         <div class="bg-white rounded-3xl p-8 shadow-sm border border-stone-100">
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div class="space-y-3">
-                                    <label class="text-[10px] font-bold uppercase tracking-widest text-primary/60">Manual Pass Identifier</label>
-                                    <div class="relative">
-                                        <input
-                                            v-model="form.pass_number"
-                                            required
-                                            class="w-full bg-stone-50 border-stone-200 border-2 rounded-xl focus:ring-primary focus:border-primary py-4 px-5 font-mono font-bold text-lg text-primary tracking-wider transition-all placeholder:text-stone-300"
-                                            placeholder="e.g. PO-11"
-                                            type="text"
-                                        />
-                                        <span class="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-primary/30" data-icon="fingerprint">fingerprint</span>
-                                    </div>
-                                    <p v-if="form.errors.pass_number" class="text-xs text-error mt-1">{{ form.errors.pass_number }}</p>
-                                </div>
+
                                 <div class="space-y-3">
                                     <label class="text-[10px] font-bold uppercase tracking-widest text-stone-500">Purpose / Need</label>
                                     <div class="relative">
@@ -251,7 +229,7 @@ const formatTime = (timeString) => {
                             </div>
 
                             <div class="space-y-4">
-                                <div v-for="(visitor, index) in form.visitors" :key="index" class="p-6 bg-stone-50/50 rounded-2xl border border-stone-100 grid grid-cols-1 md:grid-cols-3 gap-4 relative group transition-all hover:bg-stone-50">
+                                <div v-for="(visitor, index) in form.visitors" :key="index" class="p-6 bg-stone-50/50 rounded-2xl border border-stone-100 grid grid-cols-1 md:grid-cols-4 gap-4 relative group transition-all hover:bg-stone-50">
                                     <div class="space-y-1">
                                         <label class="text-[9px] font-bold uppercase text-stone-400">Full Name</label>
                                         <input v-model="visitor.name" required class="w-full bg-white border-stone-200 rounded-lg text-sm transition-all focus:ring-primary/20 focus:border-primary" placeholder="John Doe" type="text"/>
@@ -304,6 +282,11 @@ const formatTime = (timeString) => {
                                             </Menu>
                                         </div>
                                     </div>
+                                    <div class="space-y-1">
+                                        <label class="text-[9px] font-bold uppercase text-primary">Pass Number</label>
+                                        <input v-model="visitor.pass_number" required class="w-full bg-primary/5 text-primary font-mono font-bold border-primary/20 rounded-lg text-sm transition-all focus:ring-primary/20 focus:border-primary placeholder:font-normal placeholder:text-stone-300" placeholder="e.g. PO-11" type="text"/>
+                                        <p v-if="form.errors[`visitors.${index}.pass_number`]" class="text-[9px] text-error mt-1 font-bold">{{ form.errors[`visitors.${index}.pass_number`] }}</p>
+                                    </div>
 
                                     <button v-if="form.visitors.length > 1" @click="removeVisitor(index)" class="absolute -top-2 -right-2 w-6 h-6 bg-white border border-stone-200 rounded-full flex items-center justify-center text-stone-400 hover:text-error hover:border-error transition-all shadow-sm group-hover:opacity-100" type="button">
                                         <span class="material-symbols-outlined text-[10px] font-bold">close</span>
@@ -336,23 +319,14 @@ const formatTime = (timeString) => {
                                 </div>
 
                                 <div class="space-y-3">
-                                    <label class="text-[10px] font-bold uppercase tracking-widest text-stone-500">Hardware Declaration</label>
+                                    <label class="text-[10px] font-bold uppercase tracking-widest text-stone-500">Visit Remarks</label>
                                     <div class="space-y-2">
-                                        <div v-for="(item, index) in form.items" :key="'item'+index" class="flex items-center gap-2 p-3 bg-stone-50 rounded-xl border border-stone-100 group">
-                                            <div class="flex-1 min-w-0">
-                                                <input v-model="item.item_name" class="w-full bg-transparent border-none p-0 text-xs font-bold text-stone-800 focus:ring-0 truncate" placeholder="Item Name"/>
-                                                <div class="flex items-center gap-2 mt-0.5">
-                                                    <input v-model="item.quantity" type="number" min="1" class="w-8 bg-white border border-stone-200 rounded px-1 py-0.5 text-[10px] font-bold text-center"/>
-                                                    <input v-model="item.remarks" class="flex-1 bg-transparent border-none p-0 text-[10px] text-stone-500 focus:ring-0 italic" placeholder="SN / Remarks"/>
-                                                </div>
-                                            </div>
-                                            <button @click="removeItem(index)" class="text-stone-300 hover:text-error transition-colors" type="button">
-                                                <span class="material-symbols-outlined text-lg" data-icon="cancel">cancel</span>
-                                            </button>
-                                        </div>
-                                        <button @click="addItem" class="w-full py-3 border-2 border-dashed border-stone-200 rounded-xl text-stone-400 text-[10px] font-black uppercase tracking-widest hover:bg-stone-50 hover:border-primary/20 hover:text-primary transition-all" type="button">
-                                            + Declare Item
-                                        </button>
+                                        <textarea 
+                                            v-model="form.remarks" 
+                                            class="w-full bg-stone-50 border border-stone-100 rounded-xl p-4 text-xs font-bold text-stone-800 focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all outline-none resize-none" 
+                                            placeholder="Add any internal remarks or notes here..."
+                                            rows="3"
+                                        ></textarea>
                                     </div>
                                 </div>
                             </div>
@@ -439,7 +413,7 @@ const formatTime = (timeString) => {
                                 <div class="flex-1 min-w-0">
                                     <div class="flex justify-between items-start">
                                         <h4 class="text-stone-800 font-bold text-sm truncate tracking-tight">{{ visit.visitors && visit.visitors.length > 0 ? visit.visitors[0].name : 'Unknown Guest' }}</h4>
-                                        <span class="text-[10px] font-mono font-bold text-stone-400 tracking-widest">{{ visit.pass_number }}</span>
+                                        <span class="text-[10px] font-mono font-bold text-stone-400 tracking-widest">{{ visit.visitors ? visit.visitors.map(v => v.pivot?.pass_number).filter(Boolean).join(', ') : '-' }}</span>
                                     </div>
                                     <p class="text-stone-500 text-[10px] mt-0.5 font-bold uppercase tracking-wide">Host: {{ visit.employee ? visit.employee.name : 'Unknown' }}</p>
 

@@ -34,15 +34,13 @@ class AttendanceController extends Controller
     {
         $validated = $request->validate([
             'employee_id' => 'required|exists:employees,employee_id',
-            'vehicle_plate' => 'nullable|string|max:20',
             'check_in_time' => 'nullable|string|max:10',
         ]);
 
-        $employeeId = $validated['employee_id'];
-        $employee = Employee::find($employeeId);
+        $employee = Employee::find($validated['employee_id']);
 
-        // Check if already checked in today
-        $existing = Attendance::where('employee_id', $employeeId)
+        // Check if already checked in (has an active session)
+        $existing = Attendance::where('employee_id', $employee->employee_id)
             ->whereNull('check_out_time')
             ->first();
 
@@ -51,19 +49,19 @@ class AttendanceController extends Controller
         }
 
         $checkInTime = now();
-        if (! empty($validated['check_in_time'])) {
+        if (!empty($validated['check_in_time'])) {
             try {
                 $manualTime = Carbon::parse($validated['check_in_time']);
                 $checkInTime = now()->setTime($manualTime->hour, $manualTime->minute, 0);
             } catch (\Exception $e) {
-                // If parsing fails, fall back to current time
                 $checkInTime = now();
             }
         }
 
+        // Always use the employee's registered plate number — ignore form input
         Attendance::create([
-            'employee_id' => $employeeId,
-            'vehicle_plate' => $validated['vehicle_plate'] ?? $employee->plate_number,
+            'employee_id' => $employee->employee_id,
+            'vehicle_plate' => $employee->plate_number,
             'check_in_time' => $checkInTime,
             'user_id' => auth()->id(),
         ]);
@@ -83,12 +81,12 @@ class AttendanceController extends Controller
             ->orderBy('check_in_time', 'desc')
             ->first();
 
-        if (! $attendance) {
+        if (!$attendance) {
             return back()->withErrors(['staff_id' => 'No active check-in found for this staff.']);
         }
 
         $checkOutTime = now();
-        if (! empty($validated['check_out_time'])) {
+        if (!empty($validated['check_out_time'])) {
             try {
                 $manualTime = Carbon::parse($validated['check_out_time']);
                 // Use the date from check_in_time but set the time from manual input
@@ -110,8 +108,11 @@ class AttendanceController extends Controller
     public function registerStaff(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'plate_number' => 'nullable|string|max:25',
+            'name' => 'required|string|max:255|unique:employees,name',
+            'plate_number' => 'nullable|string|max:25|unique:employees,plate_number',
+        ], [
+            'name.unique' => 'A staff member with this name is already registered.',
+            'plate_number.unique' => 'This vehicle plate number is already registered to another staff member.',
         ]);
 
         Employee::create($validated);

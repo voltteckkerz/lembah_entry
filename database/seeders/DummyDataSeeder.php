@@ -91,12 +91,10 @@ class DummyDataSeeder extends Seeder
             $status = $faker->randomElement($statuses);
             
             $visitDate = $faker->dateTimeBetween('-1 month', 'now');
-            $passNumber = 'VP-' . strtoupper(Str::random(6));
 
             $visit = Visit::create([
                 'employee_id' => $employee->employee_id,
                 'user_id' => $users[0]->user_id,
-                'pass_number' => $passNumber,
                 'visit_date' => $visitDate->format('Y-m-d'),
                 'check_in_time' => in_array($status, ['Active', 'Checked Out']) ? Carbon::instance($visitDate)->addHours(rand(8, 14))->format('H:i:s') : null,
                 'check_out_time' => $status === 'Checked Out' ? Carbon::instance($visitDate)->addHours(rand(15, 18))->format('H:i:s') : null,
@@ -104,7 +102,6 @@ class DummyDataSeeder extends Seeder
                 'status' => $status,
             ]);
 
-            // Add 1-3 Visitors per visit
             $numVisitors = rand(1, 3);
             for ($v = 0; $v < $numVisitors; $v++) {
                 $visitor = Visitor::create([
@@ -113,7 +110,7 @@ class DummyDataSeeder extends Seeder
                     'phone' => $faker->phoneNumber,
                     'company' => $faker->company,
                 ]);
-                $visit->visitors()->attach($visitor->visitor_id);
+                $visit->visitors()->attach($visitor->visitor_id, ['pass_number' => 'VP-' . strtoupper(Str::random(6))]);
             }
 
             // Optional Vehicle with Malaysian Plate Format
@@ -141,7 +138,7 @@ class DummyDataSeeder extends Seeder
                 Notification::create([
                     'user_id' => null, // Broadcast
                     'visit_id' => $visit->visit_id,
-                    'message' => 'Visit update for pass ' . $visit->pass_number . ': Status is now ' . $visit->status,
+                    'message' => 'Visit status update: Status is now ' . $visit->status,
                     'status' => $faker->randomElement(['Unread', 'Read']),
                 ]);
             }

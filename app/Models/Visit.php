@@ -11,12 +11,12 @@ class Visit extends Model
     protected $fillable = [
         'employee_id',
         'user_id',
-        'pass_number',
         'visit_date',
         'check_in_time',
         'check_out_time',
         'purpose',
         'status',
+        'remarks',
     ];
 
     public function employee()
@@ -31,7 +31,7 @@ class Visit extends Model
 
     public function visitors()
     {
-        return $this->belongsToMany(Visitor::class, 'visit_visitor', 'visit_id', 'visitor_id');
+        return $this->belongsToMany(Visitor::class, 'visit_visitor', 'visit_id', 'visitor_id')->withPivot('pass_number');
     }
 
     public function vehicles()

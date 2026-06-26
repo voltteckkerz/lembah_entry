@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('visit_id')->constrained('visits', 'visit_id')->onDelete('cascade');
             $table->foreignId('visitor_id')->constrained('visitors', 'visitor_id')->onDelete('cascade');
+            $table->string('pass_number', 50)->nullable();
             $table->timestamps();
         });
     }
